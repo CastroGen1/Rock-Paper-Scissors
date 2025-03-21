@@ -1,0 +1,57 @@
+# Update the model with opponent's moves and player's moves
+# This part is complex and may need to track more information
+
+# Check if opponent is Kris
+kris_pattern = True
+for i in range(1, len(opponent_history)):
+    if player_history[i-1] is None:
+        continue
+    expected_move = beat(player_history[i-1])
+    if opponent_history[i] != expected_move:
+        kris_pattern = False
+        break
+
+if kris_pattern and len(opponent_history) >= 2:
+    # Play the move that beats Kris's expected move
+    if player_history:
+        last_player_move = player_history[-1]
+        kris_expected = beat(last_player_move)
+        ideal_response = beat(kris_expected)
+        player_history.append(ideal_response)
+        return ideal_response
+    else:
+        # Fallback
+        ideal_response = 'R'
+        player_history.append(ideal_response)
+        return ideal_response
+
+# Else, use Markov model
+# Update the model with the new opponent's move
+for i in range(len(opponent_history)):
+    for seq_len in range(1, n+1):
+        if i >= seq_len - 1:
+            sequence = tuple(opponent_history[i - seq_len + 1:i+1])
+            if i +1 < len(opponent_history):
+                next_move = opponent_history[i+1]
+                if sequence not in model[0]:
+                    model[0][sequence] = {}
+                model[0][sequence][next_move] = model[0][sequence].get(next_move, 0) + 1
+
+predicted_move = None
+for seq_len in range(min(n, len(opponent_history)), 0, -1):
+    recent_sequence = tuple(opponent_history[-seq_len:])
+    if recent_sequence in model[0]:
+        next_moves = model[0][recent_sequence]
+        predicted_move = max(next_moves, key=next_moves.get)
+        break
+if not predicted_move:
+    if opponent_history:
+        predicted_move = max(set(opponent_history), key=opponent_history.count)
+    else:
+        predicted_move = 'R'
+
+# Choose move to beat predicted_move
+ideal_response = {'P': 'S', 'R': 'P', 'S': 'R'}
+next_move = ideal_response.get(predicted_move, 'R')
+player_history.append(next_move)
+return next_move
